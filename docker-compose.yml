@@ -1,0 +1,30 @@
+services:
+  mongo:
+    image: mongo:7
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build: ./backend
+    restart: always
+    env_file: ./selfhost.env
+    environment:
+      MONGO_URL: mongodb://mongo:27017
+      STORAGE_DIR: /data/files
+    volumes:
+      - files_data:/data/files
+    depends_on:
+      - mongo
+
+  frontend:
+    build: ./frontend
+    restart: always
+    ports:
+      - "80:8080"
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+  files_data:

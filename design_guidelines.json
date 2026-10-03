@@ -1,0 +1,112 @@
+{
+  "project_name": "Arabic RSVP Speed Reader",
+  "design_philosophy": "E1 Focus Mode. An anti-distraction, highly calibrated instrument for speed reading Arabic text. We abandon standard 'SaaS dashboards' in favor of a 'Dark Room' theater experience for the reader, and a hyper-organized 'Swiss Grid' for the library. Typography is the interface. Tension is created through extreme negative space around the RSVP word.",
+  "typography": {
+    "primary_heading": "IBM Plex Sans Arabic (Geometric, authoritative, high-legibility for UI and Library)",
+    "reader_display": "Tajawal or Noto Kufi Arabic (Heavy weight, exceptional clarity for rapid word recognition)",
+    "weights": {
+      "light": 300,
+      "regular": 400,
+      "bold": 700,
+      "black": 900
+    },
+    "scale": {
+      "h1": "text-4xl md:text-5xl tracking-tight leading-tight",
+      "h2": "text-2xl md:text-3xl tracking-tight",
+      "h3": "text-xl md:text-2xl",
+      "rsvp_word": "text-6xl md:text-7xl lg:text-[100px] font-black tracking-tighter leading-none",
+      "body": "text-base leading-relaxed text-slate-300",
+      "ui_labels": "text-xs font-bold uppercase tracking-[0.1em]"
+    },
+    "rules": [
+      "No generic Sans (like Inter) - must use Arabic-optimized Google Fonts.",
+      "The RSVP word must use 'font-black' to ensure maximum visibility at high WPM.",
+      "UI Labels must be slightly letter-spaced (tracking-widest) to offset Arabic ligature density in small sizes."
+    ]
+  },
+  "colors": {
+    "theme_strategy": "The 'Performance Pro' Archetype. Deep Obsidian anchor with pure white for text clarity, and an Electric Crimson for the RSVP focal point.",
+    "palette": {
+      "background_app": "#0a0a0a",
+      "background_reader_surface": "#121212",
+      "surface_card": "#171717",
+      "border": "#262626",
+      "text_primary": "#ffffff",
+      "text_secondary": "#a3a3a3",
+      "text_muted": "#525252",
+      "accent_focal": "#e11d48",
+      "accent_success": "#10b981",
+      "accent_warning": "#f59e0b",
+      "accent_error": "#ef4444"
+    },
+    "rules": [
+      "The RSVP Reader screen background MUST be solid Deep Obsidian (#0a0a0a) to kill glare and focus the eye.",
+      "The focal letter in the RSVP word MUST be highlighted in accent_focal (#e11d48).",
+      "Never use pure black (#000000); always use the tinted #0a0a0a."
+    ]
+  },
+  "visual_enhancers": {
+    "borders": "1px solid #262626 (Neutral-800). Sharp, exact, non-intrusive.",
+    "shadows": "Remove all soft drop shadows. Rely entirely on 1px borders and slight background lightening (e.g., #171717 to #262626) to show depth.",
+    "glassmorphism": "Used ONLY on floating control bars in the Reader view (WPM slider, play/pause) to keep them visually subordinate to the text. Use backdrop-blur-xl bg-black/60 border-t border-white/10.",
+    "radius": "Minimal. Use rounded-none or rounded-sm (2px) to maintain a highly technical, precise feel."
+  },
+  "components": {
+    "buttons": {
+      "primary": "Solid accent_focal (#e11d48) with white text, sharp corners. Hover: #be123c.",
+      "ghost": "Transparent background, text_secondary. Hover: bg-white/5 text-white.",
+      "play_pause": "Massive, circular, centered below the word, or integrated into a bottom sticky control bar."
+    },
+    "cards_library": {
+      "style": "Flat, 1px border (#262626), #171717 background.",
+      "interaction": "-translate-y-1 on hover, border lightens to #525252."
+    },
+    "badges_status": {
+      "processing": "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+      "ocr_needed": "bg-amber-500/10 text-amber-400 border border-amber-500/20",
+      "ready": "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+    },
+    "progress_bars": {
+      "style": "Ultra-thin (h-1), bg-neutral-800, indicator is white or accent_focal."
+    }
+  },
+  "layouts": {
+    "global": "RTL Native. Sidebar on the RIGHT, main content on the LEFT.",
+    "login_page": "Split screen. Right half: Arabic typography abstract image (darkened). Left half: Minimalist login form centered in vast negative space.",
+    "library_dashboard": {
+      "grid": "Bento Grid protocol. grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6.",
+      "spacing": "Generous padding (p-8 or p-12) to feel premium."
+    },
+    "reader_screen": {
+      "structure": "Theater mode. 100vh.",
+      "top_bar": "Minimalist header with 'Back to Library' and Document Title (opacity-50).",
+      "center_stage": "Absolute vertical and horizontal center. Massive typography. This area must be surgically clean.",
+      "bottom_bar": "Floating glassmorphic control center (Play, Pause, WPM Slider, Rewind, Forward).",
+      "side_panel": "Collapsible left panel (since app is RTL) for 'Original Page View'."
+    }
+  },
+  "motion": {
+    "page_transitions": "Fade in, 0.3s ease-out.",
+    "rsvp_word_switch": "NO ANIMATION on word switch. It must be instant (0ms) to allow reading at 500-5000 WPM without motion blur. This is critical.",
+    "controls": "Hover states on buttons use rapid transition (duration-150).",
+    "side_panel": "Slide in from left edge using Framer Motion (x: '-100%' to x: 0)."
+  },
+  "accessibility": {
+    "contrast": "Strict APCA compliance. White on Obsidian passes easily.",
+    "focus": "focus:ring-2 focus:ring-accent_focal focus:outline-none.",
+    "keyboard": "Space to Play/Pause, Left/Right arrows to Rewind/Forward, Up/Down to adjust WPM."
+  },
+  "media_and_images": {
+    "login_background": "https://images.unsplash.com/photo-1705294108409-c730a280d1e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwyfHxhcmFiaWMlMjB0eXBvZ3JhcGh5JTIwYWJzdHJhY3R8ZW58MHx8fHwxNzkwOTQ4MzA5fDA&ixlib=rb-4.1.0&q=85",
+    "usage": "Use login_background as a full-bleed background on the auth page with a heavy bg-black/70 overlay to ensure the login form is prominent."
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "CRITICAL RTL SETUP: You MUST add `dir=\"rtl\"` to the HTML tag and ensure the tailwind config supports logical properties (ms-, me-, ps-, pe-, start, end). Do NOT use ml-, mr-, pl-, pr-, left, right.",
+    "NO DEFAULT TRANSITIONS: Do not use `transition-all`. Specify `transition-colors`, `transition-opacity`, or `transition-transform`.",
+    "FONTS: Install and use 'IBM Plex Sans Arabic' (UI) and 'Tajawal' (Reader text) via next/font or Google Fonts. Apply them explicitly in Tailwind config.",
+    "RSVP LOGIC: Word rendering must be instant. The component handling the word display must be heavily optimized to prevent re-rendering the entire page at high WPM.",
+    "DATA-TESTID: ALL interactive elements (buttons, sliders, inputs) and key state indicators (status badges, warning banners) MUST have `data-testid` attributes (e.g., `data-testid=\"play-pause-btn\"`, `data-testid=\"wpm-slider\"`).",
+    "DARK MODE: Force Dark Mode for the RSVP Reader screen, even if the user system is light, to reduce eye strain at high reading speeds.",
+    "TOASTS: Use Sonner for all notifications (upload success, OCR failure, position saved)."
+  ]
+}
