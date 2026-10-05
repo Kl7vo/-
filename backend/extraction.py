@@ -436,6 +436,12 @@ def assess_page(page):
     return status, conf, issues
 
 
+def is_scan_only(page):
+    """Return true only for image-heavy pages with no extracted text at all."""
+    chars = sum(len(w) for b in page.get("blocks", []) for ln in b.get("lines", []) for w in ln.get("words", []))
+    return chars == 0 and page.get("image_coverage", 0.0) >= 0.3
+
+
 def page_text(blocks, include_excluded=False):
     return "\n".join(ln["text"] for b in blocks for ln in b["lines"] if include_excluded or not ln.get("excluded"))
 

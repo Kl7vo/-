@@ -30,10 +30,16 @@ export const PageCompare = ({ docId, pageNumber, activeWords }) => {
   const [imgState, setImgState] = useState("loading");
 
   useEffect(() => {
+    let stopped = false;
     setPage(null);
     setErr("");
     setImgState("loading");
-    api.get(`/documents/${docId}/pages/${pageNumber}`).then((r) => setPage(r.data)).catch((e) => setErr(formatApiError(e)));
+    api.get(`/documents/${docId}/pages/${pageNumber}`).then((r) => {
+      if (!stopped) setPage(r.data);
+    }).catch((e) => {
+      if (!stopped) setErr(formatApiError(e));
+    });
+    return () => { stopped = true; };
   }, [docId, pageNumber]);
 
   return (

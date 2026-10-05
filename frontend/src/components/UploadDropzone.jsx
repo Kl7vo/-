@@ -9,14 +9,16 @@ const MAX_MB = 50;
 
 export const UploadDropzone = () => {
   const inputRef = useRef(null);
+  const busyRef = useRef(false);
   const navigate = useNavigate();
   const [drag, setDrag] = useState(false);
   const [pct, setPct] = useState(null);
 
   const upload = async (file) => {
-    if (!file) return;
+    if (!file || busyRef.current) return;
     if (!file.name.toLowerCase().endsWith(".pdf")) return toast.error("يُسمح بملفات PDF فقط");
     if (file.size > MAX_MB * 1024 * 1024) return toast.error(`الحد الأقصى ${MAX_MB} ميغابايت`);
+    busyRef.current = true;
     const body = new FormData();
     body.append("file", file);
     setPct(0);
@@ -29,6 +31,7 @@ export const UploadDropzone = () => {
     } catch (e) {
       toast.error(formatApiError(e));
     } finally {
+      busyRef.current = false;
       setPct(null);
     }
   };

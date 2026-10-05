@@ -4,7 +4,6 @@ import secrets
 from datetime import datetime, timezone, timedelta
 
 import bcrypt
-import httpx
 import jwt
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
@@ -16,8 +15,6 @@ ACCESS_MINUTES = 60
 SECURE = os.environ.get("COOKIE_SECURE", "true").lower() == "true"
 SAMESITE = "none" if SECURE else "lax"
 REFRESH_DAYS = 7
-EMERGENT_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data"
-
 router = APIRouter(prefix="/api/auth")
 
 
@@ -168,38 +165,6 @@ async def refresh(request: Request, response: Response):
     if not user or _token_revoked(payload, user):
         raise HTTPException(status_code=401, detail="المستخدم غير موجود أو الجلسة ملغاة")
     set_auth_cookies(response, user["user_id"])
-    return public_user(user)
-
-
-class SessionIn(BaseModel):
-    session_id: str
-
-
-@router.post("/google/session")
-async def google_session(body: SessionIn, response: Response):
-    async with httpx.AsyncClient(timeout=20) as client:
-        r = await client.get(EMERGENT_SESSION_URL, headers={"X-Session-ID": body.session_id})
-    if r.status_code != 200:
-        raise HTTPException(status_code=401, detail="فشل التحقق من جلسة Google")
-    data = r.json()
-    email = data["email"].lower()
-    user = await db.users.find_one({"email": email}, {"_id": 0})
-    if user:
-        await db.users.update_one({"email": email}, {"$set": {"name": data.get("name") or user.get("name"),
-                                                               "picture": data.get("picture")}})
-        user_id = user["user_id"]
-    else:
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        await db.users.insert_one({"user_id": user_id, "email": email, "name": data.get("name", ""),
-                                   "picture": data.get("picture"), "auth_provider": "google",
-                                   "role": "user", "created_at": datetime.now(timezone.utc)})
-    await db.user_sessions.insert_one({"user_id": user_id, "session_token": data["session_token"],
-                                       "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
-                                       "created_at": datetime.now(timezone.utc)})
-    response.set_cookie("session_token", data["session_token"], httponly=True, secure=SECURE,
-                        samesite=SAMESITE, max_age=7 * 86400, path="/")
-    set_auth_cookies(response, user_id)
-    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
     return public_user(user)
 
 

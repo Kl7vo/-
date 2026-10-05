@@ -51,20 +51,30 @@ export default function DocumentStatus() {
     try {
       const { data } = await api.get(`/documents/${id}`);
       setDoc(data);
-      if (data.status !== "processing") setPages((await api.get(`/documents/${id}/pages`)).data);
+      if (data.status !== "processing") {
+        const pagesResponse = await api.get(`/documents/${id}/pages`);
+        setPages(pagesResponse.data);
+      }
+      return data;
     } catch (e) {
       toast.error(formatApiError(e));
+      return null;
     }
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    let stopped = false;
+    let timer;
+    const poll = async () => {
+      const data = await load();
+      const active = data && (data.status === "processing" || ["queued", "running"].includes(data.job?.status));
+      if (!stopped && active) timer = setTimeout(poll, 1500);
+    };
+    poll();
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [load]);
 
   const running = doc?.job && ["queued", "running"].includes(doc.job.status);
-  useEffect(() => {
-    if (!running && doc?.status !== "processing") return;
-    const t = setInterval(load, 1500);
-    return () => clearInterval(t);
-  }, [running, doc?.status, load]);
 
   const runOcr = async (pageNumbers) => {
     try {

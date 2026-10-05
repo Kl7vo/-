@@ -22,9 +22,10 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // Skip while returning from Google OAuth; AuthCallback establishes the session first.
-    if (window.location.hash?.includes("session_id=")) return;
     checkAuth();
+    const onExpired = () => setUser(false);
+    window.addEventListener("reader-auth-expired", onExpired);
+    return () => window.removeEventListener("reader-auth-expired", onExpired);
   }, [checkAuth]);
 
   const logout = async () => {

@@ -97,13 +97,13 @@
     "keyboard": "Space to Play/Pause, Left/Right arrows to Rewind/Forward, Up/Down to adjust WPM."
   },
   "media_and_images": {
-    "login_background": "https://images.unsplash.com/photo-1705294108409-c730a280d1e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxOTF8MHwxfHNlYXJjaHwyfHxhcmFiaWMlMjB0eXBvZ3JhcGh5JTIwYWJzdHJhY3R8ZW58MHx8fHwxNzkwOTQ4MzA5fDA&ixlib=rb-4.1.0&q=85",
-    "usage": "Use login_background as a full-bleed background on the auth page with a heavy bg-black/70 overlay to ensure the login form is prominent."
+    "login_background": "local CSS gradient",
+    "usage": "Use the local CSS gradient as a full-bleed background with a heavy dark overlay."
   },
   "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
     "CRITICAL RTL SETUP: You MUST add `dir=\"rtl\"` to the HTML tag and ensure the tailwind config supports logical properties (ms-, me-, ps-, pe-, start, end). Do NOT use ml-, mr-, pl-, pr-, left, right.",
     "NO DEFAULT TRANSITIONS: Do not use `transition-all`. Specify `transition-colors`, `transition-opacity`, or `transition-transform`.",
-    "FONTS: Install and use 'IBM Plex Sans Arabic' (UI) and 'Tajawal' (Reader text) via next/font or Google Fonts. Apply them explicitly in Tailwind config.",
+    "FONTS: Use local system fallbacks; do not require an external CDN.",
     "RSVP LOGIC: Word rendering must be instant. The component handling the word display must be heavily optimized to prevent re-rendering the entire page at high WPM.",
     "DATA-TESTID: ALL interactive elements (buttons, sliders, inputs) and key state indicators (status badges, warning banners) MUST have `data-testid` attributes (e.g., `data-testid=\"play-pause-btn\"`, `data-testid=\"wpm-slider\"`).",
     "DARK MODE: Force Dark Mode for the RSVP Reader screen, even if the user system is light, to reduce eye strain at high reading speeds.",

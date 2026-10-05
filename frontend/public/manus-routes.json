@@ -1,9 +1,20 @@
 {
   "routes": [
-    {"path": "/", "title": "المكتبة"},
-    {"path": "/login", "title": "تسجيل الدخول"},
-    {"path": "/auth/callback", "title": "إتمام تسجيل الدخول"},
-    {"path": "/documents/:documentId", "title": "حالة المستند"},
-    {"path": "/read/:documentId", "title": "قارئ RSVP"}
+    {
+      "path": "/",
+      "title": "المكتبة"
+    },
+    {
+      "path": "/login",
+      "title": "تسجيل الدخول"
+    },
+    {
+      "path": "/documents/:documentId",
+      "title": "حالة المستند"
+    },
+    {
+      "path": "/read/:documentId",
+      "title": "قارئ RSVP"
+    }
   ]
 }

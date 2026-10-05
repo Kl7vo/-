@@ -12,19 +12,24 @@ export default function Library() {
     try {
       const { data } = await api.get("/documents");
       setDocs(data);
+      return data;
     } catch (e) {
       toast.error(formatApiError(e));
       setDocs([]);
+      return [];
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
-
   useEffect(() => {
-    if (!docs?.some((d) => d.status === "processing")) return;
-    const t = setInterval(load, 2500);
-    return () => clearInterval(t);
-  }, [docs, load]);
+    let stopped = false;
+    let timer;
+    const poll = async () => {
+      const data = await load();
+      if (!stopped && data.some((d) => d.status === "processing")) timer = setTimeout(poll, 2500);
+    };
+    poll();
+    return () => { stopped = true; clearTimeout(timer); };
+  }, [load]);
 
   const onDelete = async (doc) => {
     try {

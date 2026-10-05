@@ -7,23 +7,6 @@ import { Button } from "@/components/ui/button";
 import { api, formatApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
-const BG =
-  "https://images.unsplash.com/photo-1705294108409-c730a280d1e0?crop=entropy&cs=srgb&fm=jpg&q=85&w=1600";
-
-function GoogleButton() {
-  const onClick = () => {
-    // REMINDER: DO NOT HARDCODE THE URL, OR ADD ANY FALLBACKS OR REDIRECT URLS, THIS BREAKS THE AUTH
-    const redirectUrl = window.location.origin + "/library";
-    window.location.href = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}`;
-  };
-  return (
-    <Button type="button" variant="outline" onClick={onClick} data-testid="google-login-btn"
-      className="w-full h-11 rounded-sm border-neutral-700 bg-transparent hover:bg-white/5 transition-colors">
-      المتابعة باستخدام Google
-    </Button>
-  );
-}
-
 export default function Login() {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
@@ -54,8 +37,8 @@ export default function Login() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2" data-testid="login-page">
       <aside className="relative hidden lg:block overflow-hidden">
-        <img src={BG} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-0 bg-black/75" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#3f1d2e_0%,#171717_42%,#080808_100%)]" />
+        <div className="absolute inset-0 bg-black/55" />
         <div className="relative h-full flex flex-col justify-end p-14 fade-up">
           <p className="text-xs font-bold tracking-[0.2em] text-[#e11d48] mb-4">قارئ · نسخة أولى</p>
           <h1 className="font-reader text-5xl xl:text-6xl font-black leading-tight">اقرأ أسرع،<br />وارجع إلى المصدر.</h1>
@@ -93,14 +76,6 @@ export default function Login() {
               {busy ? "…" : mode === "login" ? "دخول" : "إنشاء الحساب"}
             </Button>
           </form>
-          {process.env.REACT_APP_DISABLE_GOOGLE_AUTH !== "true" && (
-            <>
-              <div className="my-6 flex items-center gap-3 text-xs text-neutral-600">
-                <span className="h-px flex-1 bg-neutral-800" />أو<span className="h-px flex-1 bg-neutral-800" />
-              </div>
-              <GoogleButton />
-            </>
-          )}
           <button type="button" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}
             className="mt-8 text-sm text-neutral-400 hover:text-white transition-colors" data-testid="auth-toggle-mode-btn">
             {mode === "login" ? "ليس لديك حساب؟ أنشئ حساباً" : "لديك حساب؟ سجّل الدخول"}

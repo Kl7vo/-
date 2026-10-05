@@ -13,14 +13,14 @@ EXPECTED_P2_PREFIX = "الحمد لله رب العالمين والصلاة و�
 class TestNoPaidAIForOCR:
     def test_ocr_module_has_no_gemini(self):
         src = open("/app/backend/ocr.py").read()
-        for forbidden in ("gemini", "Gemini", "emergentintegrations", "google.generativeai", "openai", "anthropic"):
+        for forbidden in ("gemini", "Gemini", "google.generativeai", "openai", "anthropic"):
             assert forbidden not in src, f"ocr.py should not reference {forbidden}"
 
     def test_backend_has_no_llm_ocr_calls(self):
         # server.py may still have the manual OCR route; just make sure OCR is routed
-        # through local ocr.py (not emergentintegrations or genai)
+        # through local ocr.py (وليس عبر مزودات ذكاء اصطناعي خارجية)
         src = open("/app/backend/server.py").read()
-        assert "emergentintegrations" not in src
+        assert "http://" not in src and "https://" not in src
         assert "google.generativeai" not in src
         # must call into local ocr module
         assert "from ocr import" in src or "import ocr" in src

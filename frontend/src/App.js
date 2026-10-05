@@ -1,8 +1,7 @@
 import "@/App.css";
-import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
-import AuthCallback from "@/pages/AuthCallback";
 import Login from "@/pages/Login";
 import Library from "@/pages/Library";
 import DocumentStatus from "@/pages/DocumentStatus";
@@ -17,8 +16,6 @@ function Protected({ children }) {
 }
 
 function AppRouter() {
-  const location = useLocation();
-  if (location.hash?.includes("session_id=")) return <AuthCallback />;
   return (
     <Routes>
       <Route path="/login" element={<Login />} />

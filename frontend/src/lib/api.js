@@ -3,7 +3,7 @@ import axios from "axios";
 const backendOrigin = (process.env.REACT_APP_BACKEND_URL || "").replace(/\/$/, "");
 export const API = `${backendOrigin}/api`;
 
-export const api = axios.create({ baseURL: API, withCredentials: true });
+export const api = axios.create({ baseURL: API, withCredentials: true, timeout: 30000 });
 
 let refreshing = null;
 api.interceptors.response.use(
@@ -11,7 +11,7 @@ api.interceptors.response.use(
   async (error) => {
     const cfg = error.config;
     const url = cfg?.url || "";
-    if (error.response?.status === 401 && !cfg._retry && !url.includes("/auth/")) {
+    if (error.response?.status === 401 && !cfg?._retry && !url.includes("/auth/")) {
       cfg._retry = true;
       try {
         refreshing = refreshing || api.post("/auth/refresh");
@@ -20,6 +20,7 @@ api.interceptors.response.use(
         return api(cfg);
       } catch (e) {
         refreshing = null;
+        window.dispatchEvent(new Event("reader-auth-expired"));
       }
     }
     return Promise.reject(error);

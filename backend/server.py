@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import logging
 import os
 import statistics
@@ -9,14 +10,16 @@ from typing import List, Literal, Optional
 import pymupdf
 from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
 
 import storage
 from auth import get_current_user, router as auth_router, seed_admin
 from db import client, db
 from extraction import (_furniture_key, apply_known_furniture, assess_page, detect_furniture, extract_page,
-                        mark_footnotes, page_text, render_png)
+                        is_scan_only, mark_footnotes, page_text, render_png)
 from ocr import OCR_ENGINE, build_doc_vocab, ocr_page_blocks
 from security import apply_security_headers, validate_pdf_content
 
@@ -28,8 +31,23 @@ MAX_PAGES = int(os.environ["MAX_PAGES"])
 # Bound rasterization cost as well as upload bytes/pages (PDFs can contain huge pages).
 MAX_PAGE_PIXELS = int(os.environ.get("MAX_PAGE_PIXELS", "50000000"))
 EXTRACTOR_VERSION = 3
-OCR_SLOTS = asyncio.Semaphore(1)
+# One whole-document job at a time keeps extraction/OCR within a 512 MB instance.
+# Jobs remain queued with status=queued until this slot is available.
+PROCESSING_SLOTS = asyncio.Semaphore(1)
 _tasks = set()
+
+
+class SPAStaticFiles(StaticFiles):
+    """Serve React's index.html for client-side routes while preserving assets/404s."""
+
+    async def get_response(self, path, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            filename = path.rsplit("/", 1)[-1]
+            if exc.status_code != 404 or path.startswith("api/") or "." in filename:
+                raise
+            return await super().get_response("index.html", scope)
 
 app = FastAPI(docs_url=None if os.environ.get("DISABLE_API_DOCS", "true").lower() == "true" else "/docs",
               redoc_url=None)
@@ -169,12 +187,12 @@ def _ocr_context(pages):
 
 
 async def _ocr_one(pdf_bytes, index, vocab, prefer_comma):
-    async with OCR_SLOTS:
-        return await asyncio.to_thread(ocr_page_blocks, pdf_bytes, index, vocab, prefer_comma)
+    return await asyncio.to_thread(ocr_page_blocks, pdf_bytes, index, vocab, prefer_comma)
 
 
-async def process_document(document_id: str, job_id: str, pdf_bytes: bytes):
+async def _process_document(document_id: str, job_id: str, storage_path: str):
     try:
+        pdf_bytes = await asyncio.to_thread(storage.get_pdf_bytes, document_id, storage_path)
         pdf = await asyncio.to_thread(pymupdf.open, stream=pdf_bytes, filetype="pdf")
         n = pdf.page_count
         await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {
@@ -194,13 +212,16 @@ async def process_document(document_id: str, job_id: str, pdf_bytes: bytes):
             res["page_number"] = i + 1
             res["_pre"] = "needs_ocr" if res.get("error") else assess_page(res)[0]
             pages.append(res)
+            gc.collect()
             if i % 3 == 0 or i == n - 1:
                 await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {"progress": i + 1}})
         pdf.close()
         previous = {p["page_number"]: p async for p in db.pages.find({"document_id": document_id}, {"_id": 0})}
         ocr_pages = {k for k, v in previous.items() if v.get("source") == "ocr"}
         # free local OCR for pages without a trustworthy text layer
-        todo = [p for p in pages if p["_pre"] == "needs_ocr" and p["page_number"] not in ocr_pages]
+        # OCR only fully scanned pages with no extracted text. Pages containing
+        # usable digital text are never rasterized.
+        todo = [p for p in pages if is_scan_only(p) and p["page_number"] not in ocr_pages]
         if todo:
             vocab, prefer_comma = _ocr_context(pages)
             await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {
@@ -212,7 +233,10 @@ async def process_document(document_id: str, job_id: str, pdf_bytes: bytes):
                 except Exception as e:
                     logger.exception("local OCR failed on page %s", p["page_number"])
                     p["ocr_error"] = str(e)[:200]
+                gc.collect()
                 await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {"progress": k + 1}})
+        del pdf_bytes
+        gc.collect()
         await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {"stage": "analyze"}})
         detect_furniture(pages)
         await db.pages.delete_many({"document_id": document_id})
@@ -258,6 +282,14 @@ async def process_document(document_id: str, job_id: str, pdf_bytes: bytes):
         await db.documents.update_one({"document_id": document_id}, {"$set": {"status": "failed"}})
 
 
+async def process_document(document_id: str, job_id: str, storage_path: str):
+    async with PROCESSING_SLOTS:
+        try:
+            await _process_document(document_id, job_id, storage_path)
+        finally:
+            gc.collect()
+
+
 async def _text_pages_context(document_id):
     known, words, commas, semis = set(), set(), 0, 0
     async for b in db.text_blocks.find({"document_id": document_id, "active": True, "source": "text"},
@@ -273,7 +305,7 @@ async def _text_pages_context(document_id):
     return known, vocab, (commas + semis < 20) or semis <= 0.3 * commas
 
 
-async def run_ocr(document_id: str, job_id: str, storage_path: str, page_numbers: List[int]):
+async def _run_ocr(document_id: str, job_id: str, storage_path: str, page_numbers: List[int]):
     await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {"status": "running", "stage": "ocr",
                                                                       "started_at": now()}})
     failures = 0
@@ -297,6 +329,7 @@ async def run_ocr(document_id: str, job_id: str, storage_path: str, page_numbers
                 logger.exception("OCR failed for page %s", pn)
                 await db.pages.update_one({"document_id": document_id, "page_number": pn}, {"$set": {
                     "status": "ocr_failed", "issues": ["ocr_error"], "ocr_error": str(e)[:200]}})
+            gc.collect()
             await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {"progress": i + 1}})
         await refresh_doc_stats(document_id)
         await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {
@@ -306,6 +339,14 @@ async def run_ocr(document_id: str, job_id: str, storage_path: str, page_numbers
         logger.exception("OCR job failed")
         await db.processing_jobs.update_one({"job_id": job_id}, {"$set": {
             "status": "failed", "error": str(e)[:300], "finished_at": now()}})
+
+
+async def run_ocr(document_id: str, job_id: str, storage_path: str, page_numbers: List[int]):
+    async with PROCESSING_SLOTS:
+        try:
+            await _run_ocr(document_id, job_id, storage_path, page_numbers)
+        finally:
+            gc.collect()
 
 
 def _job_out(job):
@@ -370,7 +411,8 @@ async def upload_document(file: UploadFile = File(...), user: dict = Depends(use
     await db.processing_jobs.insert_one({"job_id": job_id, "document_id": document_id, "user_id": user["user_id"],
                                          "type": "extract", "status": "queued", "progress": 0,
                                          "total": page_count, "created_at": now()})
-    spawn(process_document(document_id, job_id, data))
+    spawn(process_document(document_id, job_id, result["path"]))
+    del data, chunks
     return {"document_id": document_id, "job_id": job_id, "page_count": page_count}
 
 
@@ -519,16 +561,12 @@ async def reprocess_document(document_id: str, user: dict = Depends(user_dep)):
     doc = await own_doc(document_id, user)
     if await db.processing_jobs.find_one({"document_id": document_id, "status": {"$in": ["queued", "running"]}}):
         raise HTTPException(status_code=409, detail="توجد مهمة معالجة قيد التنفيذ")
-    try:
-        data = await asyncio.to_thread(storage.get_pdf_bytes, document_id, doc["storage_path"])
-    except Exception:
-        raise HTTPException(status_code=503, detail="تعذّر جلب الملف الأصلي. حاول مجدداً")
     job_id = uuid.uuid4().hex
     await db.processing_jobs.insert_one({"job_id": job_id, "document_id": document_id, "user_id": user["user_id"],
                                          "type": "extract", "status": "queued", "progress": 0,
                                          "total": doc["page_count"], "created_at": now()})
     await db.documents.update_one({"document_id": document_id}, {"$set": {"status": "processing"}})
-    spawn(process_document(document_id, job_id, data))
+    spawn(process_document(document_id, job_id, doc["storage_path"]))
     return {"job_id": job_id}
 
 
@@ -627,6 +665,7 @@ async def put_settings(body: SettingsIn, user: dict = Depends(user_dep)):
 
 app.include_router(auth_router)
 app.include_router(api)
+app.mount("/", SPAStaticFiles(directory="/app/static", html=True, check_dir=False), name="frontend")
 
 app.add_middleware(
     CORSMiddleware,
